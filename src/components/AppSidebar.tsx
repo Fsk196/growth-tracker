@@ -1,16 +1,26 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BookOpen,
   ChevronsUpDown,
-  Download,
+  FolderKanban,
   LayoutDashboard,
-  ListChecks,
   LogOut,
+  Moon,
+  Plus,
+  Settings,
+  Sun,
   Target,
   Trophy,
+  User,
 } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,20 +29,44 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ThemeToggle } from '@/features/theme/ThemeToggle'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useBoards } from '@/features/boards/useBoards'
+import { useCreateProject, useProjects } from '@/features/boards/useProjects'
 import { useUiStore } from '@/store/uiStore'
 import { supabase } from '@/lib/supabase'
 
-const navItems = [
-  { to: '/tasks', label: 'Tasks', icon: ListChecks },
+const staticNavItems = [
   { to: '/learnings', label: 'Learnings', icon: BookOpen },
   { to: '/skill-gaps', label: 'Skill Gaps', icon: Target },
   { to: '/wins', label: 'Wins', icon: Trophy },
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/export', label: 'Export', icon: Download },
 ]
+
+function navLinkClasses({ isActive }: { isActive: boolean }) {
+  return cn(
+    'group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+    isActive && 'bg-sidebar-accent text-foreground',
+  )
+}
+
+function ActiveIndicator({ isActive }: { isActive: boolean }) {
+  return (
+    <span
+      className={cn(
+        'absolute left-0 h-4 w-0.5 rounded-full bg-sidebar-primary transition-opacity',
+        isActive ? 'opacity-100' : 'opacity-0',
+      )}
+    />
+  )
+}
 
 export function AppSidebar() {
   const { session } = useAuth()
@@ -40,19 +74,42 @@ export function AppSidebar() {
   const selectedBoardId = useUiStore((s) => s.selectedBoardId)
   const setSelectedBoardId = useUiStore((s) => s.setSelectedBoardId)
   const navigate = useNavigate()
+  const { data: projects = [] } = useProjects(selectedBoardId)
+  const createProject = useCreateProject(selectedBoardId)
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
 
   const currentBoard = boards.find((b) => b.id === selectedBoardId)
+  const email = session?.user.email ?? ''
+  const initials = email.slice(0, 2).toUpperCase()
+
+  function handleCreateProject() {
+    if (!newProjectName.trim()) return
+    createProject.mutate(
+      { name: newProjectName.trim(), color: null },
+      {
+        onSuccess: (project) => {
+          setNewProjectName('')
+          setProjectDialogOpen(false)
+          toast.success('Project created')
+          navigate(`/projects/${project.id}`)
+        },
+      },
+    )
+  }
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="p-3">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-semibold text-foreground hover:bg-sidebar-accent">
-              <span className="truncate">{currentBoard?.name ?? 'Select board'}</span>
-              <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={
+              <button className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-semibold text-foreground hover:bg-sidebar-accent">
+                <span className="truncate">{currentBoard?.name ?? 'Select board'}</span>
+                <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            }
+          />
           <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuLabel>Boards</DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -67,49 +124,155 @@ export function AppSidebar() {
         </DropdownMenu>
       </div>
 
-      <nav className="flex-1 space-y-0.5 px-3">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                'group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                isActive && 'bg-sidebar-accent text-foreground',
-              )
-            }
-          >
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3">
+        <div>
+          <NavLink to="/dashboard" className={navLinkClasses}>
             {({ isActive }) => (
               <>
-                <span
-                  className={cn(
-                    'absolute left-0 h-4 w-0.5 rounded-full bg-sidebar-primary transition-opacity',
-                    isActive ? 'opacity-100' : 'opacity-0',
-                  )}
-                />
-                <item.icon className="h-4 w-4 shrink-0" />
-                {item.label}
+                <ActiveIndicator isActive={isActive} />
+                <LayoutDashboard className="h-4 w-4 shrink-0" />
+                Dashboard
               </>
             )}
           </NavLink>
-        ))}
+        </div>
+
+        <div>
+          <div className="mb-1 flex items-center justify-between px-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projects</span>
+            <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
+              <DialogTrigger
+                render={
+                  <button
+                    className="rounded p-0.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    aria-label="Add project"
+                  />
+                }
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add project</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sidebar-new-project">Name</Label>
+                  <Input
+                    id="sidebar-new-project"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    placeholder="e.g. Marketplace"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="secondary" onClick={() => setProjectDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button disabled={createProject.isPending} onClick={handleCreateProject}>
+                    Add project
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <NavLink to="/projects" end className={navLinkClasses}>
+            {({ isActive }) => (
+              <>
+                <ActiveIndicator isActive={isActive} />
+                <FolderKanban className="h-4 w-4 shrink-0" />
+                All projects
+              </>
+            )}
+          </NavLink>
+
+          <div className="mt-0.5 space-y-0.5">
+            {projects.map((project) => (
+              <NavLink key={project.id} to={`/projects/${project.id}`} className={navLinkClasses}>
+                {({ isActive }) => (
+                  <>
+                    <ActiveIndicator isActive={isActive} />
+                    <span className="ml-6 truncate">{project.name}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-0.5">
+          {staticNavItems.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navLinkClasses}>
+              {({ isActive }) => (
+                <>
+                  <ActiveIndicator isActive={isActive} />
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
-        <div className="mb-2 truncate px-2 text-xs text-muted-foreground">{session?.user.email}</div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1 justify-start gap-2 text-muted-foreground"
-            onClick={() => supabase.auth.signOut()}
+        <Popover>
+          <PopoverTrigger
+            render={
+              <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent" />
+            }
           >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </Button>
-          <ThemeToggle />
-        </div>
+            <Avatar size="sm">
+              <AvatarFallback>{initials || <User className="h-3.5 w-3.5" />}</AvatarFallback>
+            </Avatar>
+            <span className="flex-1 truncate text-xs text-muted-foreground">{email}</span>
+          </PopoverTrigger>
+          <PopoverContent align="start" side="top" className="w-56 p-1">
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">{email}</div>
+            <DropdownMenuSeparator />
+            <AccountMenuItem icon={User} label="Profile" onClick={() => navigate('/profile')} />
+            <AccountMenuItem icon={Settings} label="Settings" onClick={() => navigate('/settings')} />
+            <ThemeMenuRow />
+            <DropdownMenuSeparator />
+            <AccountMenuItem icon={LogOut} label="Sign out" onClick={() => supabase.auth.signOut()} />
+          </PopoverContent>
+        </Popover>
       </div>
     </aside>
+  )
+}
+
+function AccountMenuItem({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof User
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-accent"
+    >
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      {label}
+    </button>
+  )
+}
+
+function ThemeMenuRow() {
+  const { resolvedTheme, setTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
+  return (
+    <button
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-accent"
+    >
+      {isDark ? <Sun className="h-4 w-4 text-muted-foreground" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
+      {isDark ? 'Light theme' : 'Dark theme'}
+    </button>
   )
 }

@@ -4,6 +4,7 @@ export type ChartType = 'line' | 'bar' | 'scatter' | 'stacked-bar' | 'heatmap'
 export type Aggregation = 'sum' | 'avg' | 'count'
 
 export interface ChartConfig {
+  projectId: string | null
   xField: string | null
   yField: string | null
   groupByField: string | null
@@ -12,7 +13,6 @@ export interface ChartConfig {
 }
 
 interface TaskFilters {
-  projectId: string | null
   type: string | null
   dateFrom: string | null
   dateTo: string | null
@@ -31,13 +31,13 @@ interface UiState {
 }
 
 const defaultTaskFilters: TaskFilters = {
-  projectId: null,
   type: null,
   dateFrom: null,
   dateTo: null,
 }
 
 const defaultChartConfig: ChartConfig = {
+  projectId: null,
   xField: null,
   yField: null,
   groupByField: null,

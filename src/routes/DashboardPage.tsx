@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { BarChart3, Pencil, Plus, X } from 'lucide-react'
 import { useUiStore } from '../store/uiStore'
 import { useProjects } from '../features/boards/useProjects'
 import { useFieldDefinitions } from '../features/fields/useFieldDefinitions'
@@ -24,10 +25,21 @@ import { heatmapGrid, pivotForChart } from '../features/dashboard/reshape'
 import { useStats } from '../features/dashboard/useStats'
 import type { Aggregation, ChartType } from '../store/uiStore'
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 // Notion's decorative sticker palette — used here only for chart series, never for structural UI.
 const SERIES_COLORS = ['#62aef0', '#2a9d99', '#dd5b00', '#1aae39', '#ff64c8', '#523410']
+const ALL_PROJECTS = '__all__'
+const NO_GROUP_BY = '__none__'
 
 export function DashboardPage() {
   const boardId = useUiStore((s) => s.selectedBoardId)
@@ -35,6 +47,7 @@ export function DashboardPage() {
   const { data: projects = [] } = useProjects(boardId)
   const { data: fieldDefinitions = [] } = useFieldDefinitions(boardId)
   const { data: stats } = useStats(boardId)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const catalog = useMemo(() => buildFieldCatalog(fieldDefinitions, projects), [fieldDefinitions, projects])
   const projectNameById = useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects])
@@ -60,6 +73,8 @@ export function DashboardPage() {
   )
   const groupByEnabled = chartConfig.chartType === 'line' || chartConfig.chartType === 'bar'
 
+  const hasChart = !!(xField && yField && chartConfig.chartType)
+
   function labelFor(field: GraphableField | null, rawValue: string): string {
     if (field?.key === 'project_id') return projectNameById.get(rawValue) ?? rawValue
     return rawValue
@@ -75,6 +90,10 @@ export function DashboardPage() {
     setChartConfig({ yField: key, chartType: types[0] ?? null, groupByField: null })
   }
 
+  function handleRemoveChart() {
+    setChartConfig({ projectId: null, xField: null, yField: null, groupByField: null, chartType: null })
+  }
+
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
@@ -85,126 +104,187 @@ export function DashboardPage() {
         <StatCard label="Wins this quarter" value={stats?.winsThisQuarter ?? '—'} />
       </div>
 
-      <Card className="mb-6 p-4">
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Chart configuration</h2>
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="X field">
-            <Select value={chartConfig.xField ?? undefined} onValueChange={handleXFieldChange}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Select…" />
-              </SelectTrigger>
-              <SelectContent>
-                {catalog.map((f) => (
-                  <SelectItem key={f.key} value={f.key}>
-                    {f.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        {!hasChart && (
+          <Card className="flex flex-col items-center gap-3 p-12 text-center">
+            <BarChart3 className="h-10 w-10 text-muted-foreground" />
+            <div>
+              <p className="font-medium text-foreground">No chart yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Pick a project, then map its fields to a chart to see your progress.
+              </p>
+            </div>
+            <DialogTrigger render={<Button className="mt-2" />}>
+              <Plus /> Add chart
+            </DialogTrigger>
+          </Card>
+        )}
 
-          <Field label="Y field">
-            <Select value={chartConfig.yField ?? undefined} onValueChange={handleYFieldChange} disabled={!xField}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Select…" />
-              </SelectTrigger>
-              <SelectContent>
-                {yOptions.map((f) => (
-                  <SelectItem key={f.key} value={f.key}>
-                    {f.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+        {hasChart && (
+          <Card className="p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-medium text-foreground">
+                {chartConfig.projectId ? projectNameById.get(chartConfig.projectId) : 'All projects'}
+              </p>
+              <div className="flex items-center gap-1">
+                <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </DialogTrigger>
+                <Button variant="ghost" size="icon-sm" onClick={handleRemoveChart}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            <ChartRenderer
+              boardId={boardId}
+              projectId={chartConfig.projectId}
+              xField={xField!}
+              yField={yField!}
+              groupByField={isSelectSelectPairing ? null : groupByField}
+              chartType={chartConfig.chartType!}
+              aggregation={chartConfig.aggregation}
+              isSelectSelectPairing={!!isSelectSelectPairing}
+              labelFor={labelFor}
+            />
+          </Card>
+        )}
 
-          {validChartTypes.length > 1 && (
-            <Field label="Chart type">
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{hasChart ? 'Edit chart' : 'Add chart'}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Field label="Project">
               <Select
-                value={chartConfig.chartType ?? undefined}
-                onValueChange={(v) => setChartConfig({ chartType: v as ChartType })}
+                value={chartConfig.projectId ?? ALL_PROJECTS}
+                onValueChange={(v) => v && setChartConfig({ projectId: v === ALL_PROJECTS ? null : v })}
               >
-                <SelectTrigger className="w-36">
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {validChartTypes.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
+                  <SelectItem value={ALL_PROJECTS}>All projects</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-          )}
 
-          {needsAggregationPicker(chartConfig.chartType) && (
-            <Field label="Aggregation">
-              <Select
-                value={chartConfig.aggregation}
-                onValueChange={(v) => setChartConfig({ aggregation: v as Aggregation })}
-              >
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sum">sum</SelectItem>
-                  <SelectItem value="avg">avg</SelectItem>
-                  <SelectItem value="count">count</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-          )}
+            <div className="flex flex-wrap items-end gap-3">
+              <Field label="X field">
+                <Select value={chartConfig.xField ?? undefined} onValueChange={(v) => v && handleXFieldChange(v)}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {catalog.map((f) => (
+                      <SelectItem key={f.key} value={f.key}>
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
 
-          {groupByEnabled && groupByOptions.length > 0 && (
-            <Field label="Group by (optional)">
-              <Select
-                value={chartConfig.groupByField ?? NO_GROUP_BY}
-                onValueChange={(v) => setChartConfig({ groupByField: v === NO_GROUP_BY ? null : v })}
-              >
-                <SelectTrigger className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_GROUP_BY}>None</SelectItem>
-                  {groupByOptions.map((f) => (
-                    <SelectItem key={f.key} value={f.key}>
-                      {f.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          )}
-        </div>
-        {xField && yField && validChartTypes.length === 0 && (
-          <p className="mt-3 text-sm text-destructive">
-            No chart type supports {xField.label} ({xField.type}) + {yField.label} ({yField.type}).
-          </p>
-        )}
-      </Card>
+              <Field label="Y field">
+                <Select
+                  value={chartConfig.yField ?? undefined}
+                  onValueChange={(v) => v && handleYFieldChange(v)}
+                  disabled={!xField}
+                >
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yOptions.map((f) => (
+                      <SelectItem key={f.key} value={f.key}>
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
 
-      <Card className="p-4">
-        {xField && yField && chartConfig.chartType ? (
-          <ChartRenderer
-            boardId={boardId}
-            xField={xField}
-            yField={yField}
-            groupByField={isSelectSelectPairing ? null : groupByField}
-            chartType={chartConfig.chartType}
-            aggregation={chartConfig.aggregation}
-            isSelectSelectPairing={!!isSelectSelectPairing}
-            labelFor={labelFor}
-          />
-        ) : (
-          <p className="py-12 text-center text-sm text-muted-foreground">Pick an X and Y field to render a chart.</p>
-        )}
-      </Card>
+              {validChartTypes.length > 1 && (
+                <Field label="Chart type">
+                  <Select
+                    value={chartConfig.chartType ?? undefined}
+                    onValueChange={(v) => v && setChartConfig({ chartType: v as ChartType })}
+                  >
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {validChartTypes.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+
+              {needsAggregationPicker(chartConfig.chartType) && (
+                <Field label="Aggregation">
+                  <Select
+                    value={chartConfig.aggregation}
+                    onValueChange={(v) => v && setChartConfig({ aggregation: v as Aggregation })}
+                  >
+                    <SelectTrigger className="w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sum">sum</SelectItem>
+                      <SelectItem value="avg">avg</SelectItem>
+                      <SelectItem value="count">count</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+
+              {groupByEnabled && groupByOptions.length > 0 && (
+                <Field label="Group by (optional)">
+                  <Select
+                    value={chartConfig.groupByField ?? NO_GROUP_BY}
+                    onValueChange={(v) => setChartConfig({ groupByField: v === NO_GROUP_BY ? null : v })}
+                  >
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_GROUP_BY}>None</SelectItem>
+                      {groupByOptions.map((f) => (
+                        <SelectItem key={f.key} value={f.key}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+            </div>
+            {xField && yField && validChartTypes.length === 0 && (
+              <p className="text-sm text-destructive">
+                No chart type supports {xField.label} ({xField.type}) + {yField.label} ({yField.type}).
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setDialogOpen(false)} disabled={!hasChart}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-
-const NO_GROUP_BY = '__none__'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -226,6 +306,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 
 interface ChartRendererProps {
   boardId: string | null
+  projectId: string | null
   xField: GraphableField
   yField: GraphableField
   groupByField: GraphableField | null
@@ -237,6 +318,7 @@ interface ChartRendererProps {
 
 function ChartRenderer({
   boardId,
+  projectId,
   xField,
   yField,
   groupByField,
@@ -246,12 +328,13 @@ function ChartRenderer({
   labelFor,
 }: ChartRendererProps) {
   if (chartType === 'scatter') {
-    return <ScatterChartView boardId={boardId} xField={xField} yField={yField} />
+    return <ScatterChartView boardId={boardId} projectId={projectId} xField={xField} yField={yField} />
   }
 
   return (
     <AggregateChartView
       boardId={boardId}
+      projectId={projectId}
       xField={xField}
       yField={yField}
       groupByField={groupByField}
@@ -265,14 +348,16 @@ function ChartRenderer({
 
 function ScatterChartView({
   boardId,
+  projectId,
   xField,
   yField,
 }: {
   boardId: string | null
+  projectId: string | null
   xField: GraphableField
   yField: GraphableField
 }) {
-  const { data: rows = [], isLoading } = useScatterTasks(boardId, xField, yField)
+  const { data: rows = [], isLoading } = useScatterTasks(boardId, projectId, xField, yField)
 
   const points = useMemo(
     () =>
@@ -303,6 +388,7 @@ function ScatterChartView({
 
 function AggregateChartView({
   boardId,
+  projectId,
   xField,
   yField,
   groupByField,
@@ -312,6 +398,7 @@ function AggregateChartView({
   labelFor,
 }: {
   boardId: string | null
+  projectId: string | null
   xField: GraphableField
   yField: GraphableField
   groupByField: GraphableField | null
@@ -322,6 +409,7 @@ function AggregateChartView({
 }) {
   const { data: rows = [], isLoading } = useAggregateTasks({
     boardId,
+    projectId,
     xField,
     yField,
     groupByField,

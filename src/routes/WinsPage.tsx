@@ -1,11 +1,15 @@
 import { useState, type FormEvent } from 'react'
-import { Plus, Trophy } from 'lucide-react'
+import { Download, Plus, Trash2, Trophy } from 'lucide-react'
+import { toast } from 'sonner'
 import { useUiStore } from '../store/uiStore'
 import { useCreateWin, useDeleteWin, useWins } from '../features/wins/useWins'
+import { exportRowsToXlsx } from '../lib/exportSheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { DatePicker } from '@/components/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -36,45 +40,53 @@ export function WinsPage() {
         onSuccess: () => {
           setTitle('')
           setOpen(false)
+          toast.success('Win added')
         },
       },
     )
+  }
+
+  function handleExport() {
+    exportRowsToXlsx('Wins', wins, 'wins')
   }
 
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Wins</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleExport} disabled={wins.length === 0}>
+            <Download /> Export
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button />}>
               <Plus /> Add win
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add win</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="win-title">What did you win at?</Label>
-                <Input id="win-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="win-date">Date</Label>
-                <Input id="win-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createWin.isPending}>
-                  Add win
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add win</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="win-title">What did you win at?</Label>
+                  <Input id="win-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Date</Label>
+                  <DatePicker value={date} onChange={(v) => setDate(v ?? today())} className="w-full" />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createWin.isPending}>
+                    Add win
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {isLoading ? (
@@ -92,9 +104,21 @@ export function WinsPage() {
                 <p className="text-sm font-medium text-foreground">{win.title}</p>
                 <p className="text-xs text-muted-foreground">{win.date}</p>
               </div>
-              <Button variant="link" size="sm" className="text-destructive" onClick={() => deleteWin.mutate(win.id)}>
-                Delete
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => deleteWin.mutate(win.id, { onSuccess: () => toast.success('Win deleted') })}
+                    />
+                  }
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>Delete</TooltipContent>
+              </Tooltip>
             </div>
           ))}
         </Card>

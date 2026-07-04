@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DialogFooter } from '@/components/ui/dialog'
+import { DatePicker } from '@/components/date-picker'
 
 const TASK_TYPES = ['feature', 'bug', 'refactor', 'accessibility', 'review'] as const
 const NONE_VALUE = '__none__'
@@ -24,6 +25,7 @@ export interface TaskFormValues {
 
 interface TaskFormProps {
   projects: Project[]
+  fixedProjectId?: string
   fieldDefinitions?: FieldDefinition[]
   initialValues?: Task
   onSubmit: (values: TaskFormValues) => void
@@ -35,6 +37,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 export function TaskForm({
   projects,
+  fixedProjectId,
   fieldDefinitions = [],
   initialValues,
   onSubmit,
@@ -44,7 +47,7 @@ export function TaskForm({
   const [title, setTitle] = useState(initialValues?.title ?? '')
   const [type, setType] = useState(initialValues?.type ?? TASK_TYPES[0])
   const [date, setDate] = useState(initialValues?.date ?? today())
-  const [projectId, setProjectId] = useState(initialValues?.project_id ?? NONE_VALUE)
+  const [projectId, setProjectId] = useState(initialValues?.project_id ?? fixedProjectId ?? NONE_VALUE)
   const [impact, setImpact] = useState(initialValues?.impact ?? '')
   const [timeSpent, setTimeSpent] = useState(initialValues?.time_spent?.toString() ?? '')
   const initialCustomFields = (initialValues?.custom_fields as Record<string, Json>) ?? {}
@@ -61,7 +64,7 @@ export function TaskForm({
       title: title.trim(),
       type,
       date,
-      project_id: projectId === NONE_VALUE ? null : projectId,
+      project_id: fixedProjectId ?? (projectId === NONE_VALUE ? null : projectId),
       impact: impact.trim() || null,
       time_spent: timeSpent ? Number(timeSpent) : null,
       custom_fields: customFields,
@@ -79,8 +82,8 @@ export function TaskForm({
 
       <div>
         <Label className="mb-1.5 block">Type</Label>
-        <Select value={type} onValueChange={setType}>
-          <SelectTrigger>
+        <Select value={type} onValueChange={(v) => v && setType(v)}>
+          <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -94,28 +97,28 @@ export function TaskForm({
       </div>
 
       <div>
-        <Label htmlFor="task-date" className="mb-1.5 block">
-          Date
-        </Label>
-        <Input id="task-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+        <Label className="mb-1.5 block">Date</Label>
+        <DatePicker value={date} onChange={(v) => setDate(v ?? today())} className="w-full" />
       </div>
 
-      <div>
-        <Label className="mb-1.5 block">Project</Label>
-        <Select value={projectId} onValueChange={setProjectId}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NONE_VALUE}>None</SelectItem>
-            {projects.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {!fixedProjectId && (
+        <div>
+          <Label className="mb-1.5 block">Project</Label>
+          <Select value={projectId} onValueChange={(v) => setProjectId(v ?? NONE_VALUE)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE_VALUE}>None</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div>
         <Label htmlFor="task-time-spent" className="mb-1.5 block">
@@ -147,7 +150,7 @@ export function TaskForm({
                   value={(customFields[field.field_key] as string) ?? NONE_VALUE}
                   onValueChange={(v) => setCustomField(field.field_key, v === NONE_VALUE ? null : v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -168,10 +171,10 @@ export function TaskForm({
                   }
                 />
               ) : field.field_type === 'date' ? (
-                <Input
-                  type="date"
-                  value={(customFields[field.field_key] as string) ?? ''}
-                  onChange={(e) => setCustomField(field.field_key, e.target.value)}
+                <DatePicker
+                  value={(customFields[field.field_key] as string) ?? null}
+                  onChange={(v) => setCustomField(field.field_key, v)}
+                  className="w-full"
                 />
               ) : (
                 <Input

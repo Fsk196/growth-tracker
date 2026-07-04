@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import { Plus } from 'lucide-react'
+import { Navigate, useParams } from 'react-router-dom'
+import { Download, Pencil, Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useUiStore } from '../store/uiStore'
-import { useCreateProject, useProjects } from '../features/boards/useProjects'
+import { useProjects } from '../features/boards/useProjects'
 import { useCreateTask, useDeleteTask, useTasks, useUpdateTask, type Task } from '../features/tasks/useTasks'
 import { TaskForm, type TaskFormValues } from '../features/tasks/TaskForm'
 import { useCreateFieldDefinition, useFieldDefinitions } from '../features/fields/useFieldDefinitions'
+import { exportRowsToXlsx } from '../lib/exportSheet'
 import type { Json } from '../types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +16,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { DatePicker } from '@/components/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -26,19 +31,20 @@ const TASK_TYPES = ['feature', 'bug', 'refactor', 'accessibility', 'review']
 const FIELD_TYPES = ['text', 'number', 'date', 'select'] as const
 const ALL_VALUE = '__all__'
 
-export function TaskLogPage() {
+export function ProjectTasksPage() {
+  const { projectId } = useParams<{ projectId: string }>()
   const boardId = useUiStore((s) => s.selectedBoardId)
   const { taskFilters, setTaskFilters, resetTaskFilters } = useUiStore()
   const { data: projects = [] } = useProjects(boardId)
-  const createProject = useCreateProject(boardId)
-  const [newProjectName, setNewProjectName] = useState('')
-  const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+  const project = projects.find((p) => p.id === projectId)
+
   const { data: fieldDefinitions = [] } = useFieldDefinitions(boardId)
   const createFieldDefinition = useCreateFieldDefinition(boardId)
   const [fieldDialogOpen, setFieldDialogOpen] = useState(false)
   const [newField, setNewField] = useState({ label: '', field_type: 'text' as (typeof FIELD_TYPES)[number], options: '' })
+
   const { data: tasks = [], isLoading } = useTasks(boardId, {
-    projectId: taskFilters.projectId,
+    projectId,
     type: taskFilters.type,
     dateFrom: taskFilters.dateFrom,
     dateTo: taskFilters.dateTo,
@@ -51,20 +57,33 @@ export function TaskLogPage() {
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
 
-  function projectName(projectId: string | null) {
-    return projects.find((p) => p.id === projectId)?.name ?? '—'
-  }
+  if (!projectId) return <Navigate to="/projects" replace />
+  if (projects.length > 0 && !project) return <Navigate to="/projects" replace />
 
   function handleCreate(values: TaskFormValues) {
-    createTask.mutate(values, { onSuccess: () => setTaskDialogOpen(false) })
+    createTask.mutate(values, {
+      onSuccess: () => {
+        setTaskDialogOpen(false)
+        toast.success('Task added')
+      },
+    })
   }
 
   function handleUpdate(values: TaskFormValues) {
     if (!editingTask) return
     updateTask.mutate(
       { id: editingTask.id, ...values },
-      { onSuccess: () => setEditingTask(null) },
+      {
+        onSuccess: () => {
+          setEditingTask(null)
+          toast.success('Task updated')
+        },
+      },
     )
+  }
+
+  function handleDelete(taskId: string) {
+    deleteTask.mutate(taskId, { onSuccess: () => toast.success('Task deleted') })
   }
 
   function slugify(label: string) {
@@ -90,6 +109,7 @@ export function TaskLogPage() {
         onSuccess: () => {
           setNewField({ label: '', field_type: 'text', options: '' })
           setFieldDialogOpen(false)
+          toast.success('Custom field added')
         },
       },
     )
@@ -100,29 +120,37 @@ export function TaskLogPage() {
     return value === null || value === undefined || value === '' ? '—' : String(value)
   }
 
+  function handleExport() {
+    exportRowsToXlsx('Tasks', tasks, `tasks-${project?.name ?? 'project'}`)
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Task Log</h1>
-        <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{project?.name ?? 'Tasks'}</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleExport} disabled={tasks.length === 0}>
+            <Download /> Export
+          </Button>
+          <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+            <DialogTrigger render={<Button />}>
               <Plus /> Add task
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add task</DialogTitle>
-            </DialogHeader>
-            <TaskForm
-              projects={projects}
-              fieldDefinitions={fieldDefinitions}
-              onSubmit={handleCreate}
-              onCancel={() => setTaskDialogOpen(false)}
-              submitting={createTask.isPending}
-            />
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Add task</DialogTitle>
+              </DialogHeader>
+              <TaskForm
+                projects={projects}
+                fixedProjectId={projectId}
+                fieldDefinitions={fieldDefinitions}
+                onSubmit={handleCreate}
+                onCancel={() => setTaskDialogOpen(false)}
+                submitting={createTask.isPending}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
@@ -133,6 +161,7 @@ export function TaskLogPage() {
           {editingTask && (
             <TaskForm
               projects={projects}
+              fixedProjectId={projectId}
               fieldDefinitions={fieldDefinitions}
               initialValues={editingTask}
               onSubmit={handleUpdate}
@@ -144,60 +173,6 @@ export function TaskLogPage() {
       </Dialog>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="mr-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Projects:</span>
-          {projects.map((p) => (
-            <Badge key={p.id} variant="secondary">
-              {p.name}
-            </Badge>
-          ))}
-        </div>
-        <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="secondary" size="sm">
-              <Plus /> Project
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add project</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-1.5">
-              <Label htmlFor="new-project-name">Name</Label>
-              <Input
-                id="new-project-name"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="e.g. Marketplace"
-              />
-            </div>
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => setProjectDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                disabled={createProject.isPending}
-                onClick={() => {
-                  if (!newProjectName.trim()) return
-                  createProject.mutate(
-                    { name: newProjectName.trim(), color: null },
-                    {
-                      onSuccess: () => {
-                        setNewProjectName('')
-                        setProjectDialogOpen(false)
-                      },
-                    },
-                  )
-                }}
-              >
-                Add project
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <div className="mx-2 h-4 w-px bg-border" />
-
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">Custom fields:</span>
           {fieldDefinitions.map((f) => (
@@ -207,10 +182,8 @@ export function TaskLogPage() {
           ))}
         </div>
         <Dialog open={fieldDialogOpen} onOpenChange={setFieldDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="secondary" size="sm">
-              <Plus /> Custom field
-            </Button>
+          <DialogTrigger render={<Button variant="secondary" size="sm" />}>
+            <Plus /> Custom field
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -230,9 +203,9 @@ export function TaskLogPage() {
                 <Label>Type</Label>
                 <Select
                   value={newField.field_type}
-                  onValueChange={(v) => setNewField((f) => ({ ...f, field_type: v as (typeof FIELD_TYPES)[number] }))}
+                  onValueChange={(v) => v && setNewField((f) => ({ ...f, field_type: v as (typeof FIELD_TYPES)[number] }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -268,24 +241,7 @@ export function TaskLogPage() {
       </div>
 
       <Card className="mb-4 p-3">
-        <div className="flex flex-wrap gap-3">
-          <Select
-            value={taskFilters.projectId ?? ALL_VALUE}
-            onValueChange={(v) => setTaskFilters({ projectId: v === ALL_VALUE ? null : v })}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="All projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_VALUE}>All projects</SelectItem>
-              {projects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
+        <div className="flex flex-wrap items-center gap-3">
           <Select
             value={taskFilters.type ?? ALL_VALUE}
             onValueChange={(v) => setTaskFilters({ type: v === ALL_VALUE ? null : v })}
@@ -303,19 +259,10 @@ export function TaskLogPage() {
             </SelectContent>
           </Select>
 
-          <Input
-            type="date"
-            value={taskFilters.dateFrom ?? ''}
-            onChange={(e) => setTaskFilters({ dateFrom: e.target.value || null })}
-            className="w-40"
-          />
-          <span className="self-center text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={taskFilters.dateTo ?? ''}
-            onChange={(e) => setTaskFilters({ dateTo: e.target.value || null })}
-            className="w-40"
-          />
+          <DatePicker value={taskFilters.dateFrom} onChange={(v) => setTaskFilters({ dateFrom: v })} placeholder="From" />
+          <span className="text-sm text-muted-foreground">to</span>
+          <DatePicker value={taskFilters.dateTo} onChange={(v) => setTaskFilters({ dateTo: v })} placeholder="To" />
+
           <Button variant="ghost" size="sm" onClick={resetTaskFilters}>
             Clear filters
           </Button>
@@ -329,25 +276,24 @@ export function TaskLogPage() {
               <TableHead>Date</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Project</TableHead>
               <TableHead>Time (min)</TableHead>
               <TableHead>Impact</TableHead>
               {fieldDefinitions.map((f) => (
                 <TableHead key={f.id}>{f.label}</TableHead>
               ))}
-              <TableHead />
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7 + fieldDefinitions.length} className="py-6 text-center text-muted-foreground">
+                <TableCell colSpan={6 + fieldDefinitions.length} className="py-6 text-center text-muted-foreground">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : tasks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7 + fieldDefinitions.length} className="py-6 text-center text-muted-foreground">
+                <TableCell colSpan={6 + fieldDefinitions.length} className="py-6 text-center text-muted-foreground">
                   No tasks yet.
                 </TableCell>
               </TableRow>
@@ -357,24 +303,35 @@ export function TaskLogPage() {
                   <TableCell className="whitespace-nowrap">{task.date}</TableCell>
                   <TableCell>{task.title}</TableCell>
                   <TableCell className="capitalize">{task.type}</TableCell>
-                  <TableCell>{projectName(task.project_id)}</TableCell>
                   <TableCell>{task.time_spent ?? '—'}</TableCell>
                   <TableCell>{task.impact ?? '—'}</TableCell>
                   {fieldDefinitions.map((f) => (
                     <TableCell key={f.id}>{customFieldValue(task, f.field_key)}</TableCell>
                   ))}
                   <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="link" size="sm" onClick={() => setEditingTask(task)}>
-                      Edit
-                    </Button>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() => deleteTask.mutate(task.id)}
-                    >
-                      Delete
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={<Button variant="ghost" size="icon-sm" onClick={() => setEditingTask(task)} />}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(task.id)}
+                          />
+                        }
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>Delete</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))

@@ -7,14 +7,16 @@ import { queryClient } from './lib/queryClient'
 import { AuthProvider } from './features/auth/AuthProvider'
 import { ThemeProvider } from './features/theme/ThemeProvider'
 import { TooltipProvider } from './components/ui/tooltip'
+import { Toaster } from './components/ui/sonner'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider delayDuration={200}>
+          <TooltipProvider delay={200}>
             <App />
+            <Toaster />
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>

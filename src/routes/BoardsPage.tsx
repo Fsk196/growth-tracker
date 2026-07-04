@@ -27,7 +27,7 @@ export function BoardsPage() {
 
   function selectBoard(boardId: string) {
     setSelectedBoardId(boardId)
-    navigate('/tasks')
+    navigate('/dashboard')
   }
 
   return (

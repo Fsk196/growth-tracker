@@ -5,6 +5,7 @@ import type { Aggregation } from '../../store/uiStore'
 
 interface AggregateTasksArgs {
   boardId: string | null
+  projectId: string | null
   xField: GraphableField | null
   yField: GraphableField | null
   groupByField: GraphableField | null
@@ -14,6 +15,7 @@ interface AggregateTasksArgs {
 
 export function useAggregateTasks({
   boardId,
+  projectId,
   xField,
   yField,
   groupByField,
@@ -26,6 +28,7 @@ export function useAggregateTasks({
     queryKey: [
       'aggregate_tasks',
       boardId,
+      projectId,
       xField?.key,
       yField?.key,
       groupByField?.key,
@@ -45,6 +48,7 @@ export function useAggregateTasks({
         p_agg: isSelectSelectPairing ? 'count' : aggregation,
         p_group_by_field: isSelectSelectPairing ? yField!.key : (groupByField?.key ?? undefined),
         p_group_by_is_custom: isSelectSelectPairing ? yField!.isCustom : (groupByField?.isCustom ?? false),
+        p_project_id: projectId ?? undefined,
       })
       if (error) throw error
       return data

@@ -351,6 +351,7 @@ export type Database = {
           p_board_id: string
           p_group_by_field?: string
           p_group_by_is_custom?: boolean
+          p_project_id?: string
           p_x_field: string
           p_x_is_custom?: boolean
           p_y_field?: string

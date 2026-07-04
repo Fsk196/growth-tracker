@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Plus } from 'lucide-react'
+import { Check, Download, Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useUiStore } from '../store/uiStore'
 import {
   useCreateSkillGap,
@@ -8,11 +9,13 @@ import {
   useUpdateSkillGap,
   type SkillGap,
 } from '../features/skillGaps/useSkillGaps'
+import { exportRowsToXlsx } from '../lib/exportSheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -57,6 +60,7 @@ export function SkillGapsPage() {
           setTargetDesc('')
           setCurrentScore('3')
           setOpen(false)
+          toast.success('Skill area added')
         },
       },
     )
@@ -65,70 +69,80 @@ export function SkillGapsPage() {
   function saveScore(skillGap: SkillGap) {
     const newScore = Number(editedScores[skillGap.id] ?? skillGap.current_score)
     if (newScore === skillGap.current_score) return
-    updateSkillGap.mutate({
-      id: skillGap.id,
-      current_score: newScore,
-      last_reviewed_date: today(),
-    })
+    updateSkillGap.mutate(
+      {
+        id: skillGap.id,
+        current_score: newScore,
+        last_reviewed_date: today(),
+      },
+      { onSuccess: () => toast.success('Score updated') },
+    )
+  }
+
+  function handleExport() {
+    exportRowsToXlsx('Skill Gaps', skillGaps, 'skill-gaps')
   }
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Skill Gap Map</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleExport} disabled={skillGaps.length === 0}>
+            <Download /> Export
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button />}>
               <Plus /> Add skill area
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add skill area</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="skill-area" className="mb-1.5 block">
-                  Skill area
-                </Label>
-                <Input id="skill-area" value={skillArea} onChange={(e) => setSkillArea(e.target.value)} required />
-              </div>
-              <div>
-                <Label htmlFor="skill-score" className="mb-1.5 block">
-                  Current score (1-5)
-                </Label>
-                <Input
-                  id="skill-score"
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={currentScore}
-                  onChange={(e) => setCurrentScore(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="skill-current" className="mb-1.5 block">
-                  Current level
-                </Label>
-                <Input id="skill-current" value={currentDesc} onChange={(e) => setCurrentDesc(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="skill-target" className="mb-1.5 block">
-                  Target level
-                </Label>
-                <Input id="skill-target" value={targetDesc} onChange={(e) => setTargetDesc(e.target.value)} />
-              </div>
-              <DialogFooter className="sm:col-span-2">
-                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createSkillGap.isPending}>
-                  Add
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Add skill area</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="skill-area" className="mb-1.5 block">
+                    Skill area
+                  </Label>
+                  <Input id="skill-area" value={skillArea} onChange={(e) => setSkillArea(e.target.value)} required />
+                </div>
+                <div>
+                  <Label htmlFor="skill-score" className="mb-1.5 block">
+                    Current score (1-5)
+                  </Label>
+                  <Input
+                    id="skill-score"
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={currentScore}
+                    onChange={(e) => setCurrentScore(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="skill-current" className="mb-1.5 block">
+                    Current level
+                  </Label>
+                  <Input id="skill-current" value={currentDesc} onChange={(e) => setCurrentDesc(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="skill-target" className="mb-1.5 block">
+                    Target level
+                  </Label>
+                  <Input id="skill-target" value={targetDesc} onChange={(e) => setTargetDesc(e.target.value)} />
+                </div>
+                <DialogFooter className="sm:col-span-2">
+                  <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createSkillGap.isPending}>
+                    Add
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
@@ -140,7 +154,7 @@ export function SkillGapsPage() {
               <TableHead>Target level</TableHead>
               <TableHead>Score (1-5)</TableHead>
               <TableHead>Last reviewed</TableHead>
-              <TableHead />
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -163,7 +177,7 @@ export function SkillGapsPage() {
                   <TableCell>{sg.current_level_desc ?? '—'}</TableCell>
                   <TableCell>{sg.target_level_desc ?? '—'}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <Input
                         type="number"
                         min={1}
@@ -172,21 +186,42 @@ export function SkillGapsPage() {
                         onChange={(e) => setEditedScores((prev) => ({ ...prev, [sg.id]: e.target.value }))}
                         className="w-16"
                       />
-                      <Button variant="link" size="sm" onClick={() => saveScore(sg)} disabled={updateSkillGap.isPending}>
-                        Save
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => saveScore(sg)}
+                              disabled={updateSkillGap.isPending}
+                            />
+                          }
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </TooltipTrigger>
+                        <TooltipContent>Save score</TooltipContent>
+                      </Tooltip>
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{sg.last_reviewed_date}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() => deleteSkillGap.mutate(sg.id)}
-                    >
-                      Delete
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() =>
+                              deleteSkillGap.mutate(sg.id, { onSuccess: () => toast.success('Skill area deleted') })
+                            }
+                          />
+                        }
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>Delete</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))

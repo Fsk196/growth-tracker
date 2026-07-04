@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Plus } from 'lucide-react'
+import { Download, Pencil, Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useUiStore } from '../store/uiStore'
 import {
   useCreateLearning,
@@ -8,12 +9,15 @@ import {
   useUpdateLearning,
   type Learning,
 } from '../features/learnings/useLearnings'
+import { exportRowsToXlsx } from '../lib/exportSheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { DatePicker } from '@/components/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -65,10 +69,8 @@ function LearningForm({
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-        <Label htmlFor="learning-date" className="mb-1.5 block">
-          Date
-        </Label>
-        <Input id="learning-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+        <Label className="mb-1.5 block">Date</Label>
+        <DatePicker value={date} onChange={(v) => setDate(v ?? today())} className="w-full" />
       </div>
       <div>
         <Label htmlFor="learning-topic" className="mb-1.5 block">
@@ -128,27 +130,41 @@ export function LearningsPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<Learning | null>(null)
 
+  function handleExport() {
+    exportRowsToXlsx('Learnings', learnings, 'learnings')
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Learnings</h1>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleExport} disabled={learnings.length === 0}>
+            <Download /> Export
+          </Button>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger render={<Button />}>
               <Plus /> Add learning
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add learning</DialogTitle>
-            </DialogHeader>
-            <LearningForm
-              onSubmit={(values) => createLearning.mutate(values, { onSuccess: () => setAddOpen(false) })}
-              onCancel={() => setAddOpen(false)}
-              submitting={createLearning.isPending}
-            />
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Add learning</DialogTitle>
+              </DialogHeader>
+              <LearningForm
+                onSubmit={(values) =>
+                  createLearning.mutate(values, {
+                    onSuccess: () => {
+                      setAddOpen(false)
+                      toast.success('Learning added')
+                    },
+                  })
+                }
+                onCancel={() => setAddOpen(false)}
+                submitting={createLearning.isPending}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
@@ -160,7 +176,15 @@ export function LearningsPage() {
             <LearningForm
               initialValues={editing}
               onSubmit={(values) =>
-                updateLearning.mutate({ id: editing.id, ...values }, { onSuccess: () => setEditing(null) })
+                updateLearning.mutate(
+                  { id: editing.id, ...values },
+                  {
+                    onSuccess: () => {
+                      setEditing(null)
+                      toast.success('Learning updated')
+                    },
+                  },
+                )
               }
               onCancel={() => setEditing(null)}
               submitting={updateLearning.isPending}
@@ -178,7 +202,7 @@ export function LearningsPage() {
               <TableHead>Source</TableHead>
               <TableHead>Understood</TableHead>
               <TableHead>Still fuzzy on</TableHead>
-              <TableHead />
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -203,17 +227,29 @@ export function LearningsPage() {
                   <TableCell>{learning.understood ?? '—'}</TableCell>
                   <TableCell>{learning.still_fuzzy_on ?? '—'}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="link" size="sm" onClick={() => setEditing(learning)}>
-                      Edit
-                    </Button>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() => deleteLearning.mutate(learning.id)}
-                    >
-                      Delete
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={() => setEditing(learning)} />}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() =>
+                              deleteLearning.mutate(learning.id, { onSuccess: () => toast.success('Learning deleted') })
+                            }
+                          />
+                        }
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>Delete</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))

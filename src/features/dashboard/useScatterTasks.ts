@@ -5,14 +5,18 @@ import type { GraphableField } from './fieldCatalog'
 // number+number pairs are plotted raw (no aggregation applies to a scatter),
 // so this queries tasks directly through PostgREST — RLS scopes it to the
 // signed-in user, no RPC/security-definer needed.
-export function useScatterTasks(boardId: string | null, xField: GraphableField | null, yField: GraphableField | null) {
+export function useScatterTasks(
+  boardId: string | null,
+  projectId: string | null,
+  xField: GraphableField | null,
+  yField: GraphableField | null,
+) {
   return useQuery({
-    queryKey: ['scatter_tasks', boardId, xField?.key, yField?.key],
+    queryKey: ['scatter_tasks', boardId, projectId, xField?.key, yField?.key],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('id, time_spent, custom_fields')
-        .eq('board_id', boardId!)
+      let query = supabase.from('tasks').select('id, time_spent, custom_fields').eq('board_id', boardId!)
+      if (projectId) query = query.eq('project_id', projectId)
+      const { data, error } = await query
       if (error) throw error
       return data
     },
