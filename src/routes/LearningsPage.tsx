@@ -1,4 +1,5 @@
-import { Fragment, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { Plus } from 'lucide-react'
 import { useUiStore } from '../store/uiStore'
 import {
   useCreateLearning,
@@ -7,6 +8,20 @@ import {
   useUpdateLearning,
   type Learning,
 } from '../features/learnings/useLearnings'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Card } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -50,68 +65,55 @@ function LearningForm({
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Date</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          required
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-        />
+        <Label htmlFor="learning-date" className="mb-1.5 block">
+          Date
+        </Label>
+        <Input id="learning-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Topic</label>
-        <input
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          required
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-        />
+        <Label htmlFor="learning-topic" className="mb-1.5 block">
+          Topic
+        </Label>
+        <Input id="learning-topic" value={topic} onChange={(e) => setTopic(e.target.value)} required />
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Source</label>
-        <input
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-        />
+        <Label htmlFor="learning-source" className="mb-1.5 block">
+          Source
+        </Label>
+        <Input id="learning-source" value={source} onChange={(e) => setSource(e.target.value)} />
       </div>
       <div className="sm:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-gray-700">What I understood</label>
-        <textarea
+        <Label htmlFor="learning-understood" className="mb-1.5 block">
+          What I understood
+        </Label>
+        <Textarea
+          id="learning-understood"
           value={understood}
           onChange={(e) => setUnderstood(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
         />
       </div>
       <div className="sm:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-gray-700">Still fuzzy on</label>
-        <textarea
+        <Label htmlFor="learning-fuzzy" className="mb-1.5 block">
+          Still fuzzy on
+        </Label>
+        <Textarea
+          id="learning-fuzzy"
           value={stillFuzzyOn}
           onChange={(e) => setStillFuzzyOn(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
         />
       </div>
-      <div className="flex gap-2 sm:col-span-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {initialValues ? 'Save changes' : 'Add learning'}
-        </button>
+      <DialogFooter className="sm:col-span-2">
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
+          <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         )}
-      </div>
+        <Button type="submit" disabled={submitting}>
+          {initialValues ? 'Save changes' : 'Add learning'}
+        </Button>
+      </DialogFooter>
     </form>
   )
 }
@@ -123,99 +125,102 @@ export function LearningsPage() {
   const updateLearning = useUpdateLearning(boardId)
   const deleteLearning = useDeleteLearning(boardId)
 
-  const [showForm, setShowForm] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<Learning | null>(null)
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Learnings</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-        >
-          {showForm ? 'Close' : 'Add learning'}
-        </button>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Learnings</h1>
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus /> Add learning
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add learning</DialogTitle>
+            </DialogHeader>
+            <LearningForm
+              onSubmit={(values) => createLearning.mutate(values, { onSuccess: () => setAddOpen(false) })}
+              onCancel={() => setAddOpen(false)}
+              submitting={createLearning.isPending}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {showForm && (
-        <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
-          <LearningForm
-            onSubmit={(values) => createLearning.mutate(values, { onSuccess: () => setShowForm(false) })}
-            submitting={createLearning.isPending}
-          />
-        </div>
-      )}
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit learning</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <LearningForm
+              initialValues={editing}
+              onSubmit={(values) =>
+                updateLearning.mutate({ id: editing.id, ...values }, { onSuccess: () => setEditing(null) })
+              }
+              onCancel={() => setEditing(null)}
+              submitting={updateLearning.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
-      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Date</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Topic</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Source</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Understood</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Still fuzzy on</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Topic</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Understood</TableHead>
+              <TableHead>Still fuzzy on</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
                   Loading…
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : learnings.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
                   No learnings logged yet.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               learnings.map((learning) => (
-                <Fragment key={learning.id}>
-                  <tr>
-                    <td className="px-4 py-2 whitespace-nowrap">{learning.date}</td>
-                    <td className="px-4 py-2">{learning.topic}</td>
-                    <td className="px-4 py-2">{learning.source ?? '—'}</td>
-                    <td className="px-4 py-2">{learning.understood ?? '—'}</td>
-                    <td className="px-4 py-2">{learning.still_fuzzy_on ?? '—'}</td>
-                    <td className="px-4 py-2 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => setEditing(editing?.id === learning.id ? null : learning)}
-                        className="mr-3 text-indigo-600 hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteLearning.mutate(learning.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                  {editing?.id === learning.id && (
-                    <tr>
-                      <td colSpan={6} className="bg-gray-50 px-4 py-4">
-                        <LearningForm
-                          initialValues={learning}
-                          onSubmit={(values) =>
-                            updateLearning.mutate({ id: learning.id, ...values }, { onSuccess: () => setEditing(null) })
-                          }
-                          onCancel={() => setEditing(null)}
-                          submitting={updateLearning.isPending}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                <TableRow key={learning.id}>
+                  <TableCell className="whitespace-nowrap">{learning.date}</TableCell>
+                  <TableCell>{learning.topic}</TableCell>
+                  <TableCell>{learning.source ?? '—'}</TableCell>
+                  <TableCell>{learning.understood ?? '—'}</TableCell>
+                  <TableCell>{learning.still_fuzzy_on ?? '—'}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button variant="link" size="sm" onClick={() => setEditing(learning)}>
+                      Edit
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => deleteLearning.mutate(learning.id)}
+                    >
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   )
 }

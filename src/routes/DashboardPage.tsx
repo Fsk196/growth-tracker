@@ -23,8 +23,11 @@ import { extractNumericValue, useScatterTasks } from '../features/dashboard/useS
 import { heatmapGrid, pivotForChart } from '../features/dashboard/reshape'
 import { useStats } from '../features/dashboard/useStats'
 import type { Aggregation, ChartType } from '../store/uiStore'
+import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-const SERIES_COLORS = ['#6366f1', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#22c55e']
+// Notion's decorative sticker palette — used here only for chart series, never for structural UI.
+const SERIES_COLORS = ['#62aef0', '#2a9d99', '#dd5b00', '#1aae39', '#ff64c8', '#523410']
 
 export function DashboardPage() {
   const boardId = useUiStore((s) => s.selectedBoardId)
@@ -63,18 +66,18 @@ export function DashboardPage() {
   }
 
   function handleXFieldChange(key: string) {
-    setChartConfig({ xField: key || null, yField: null, groupByField: null, chartType: null })
+    setChartConfig({ xField: key, yField: null, groupByField: null, chartType: null })
   }
 
   function handleYFieldChange(key: string) {
     const yf = catalog.find((f) => f.key === key) ?? null
     const types = xField && yf ? getValidChartTypes(xField.type, yf.type) : []
-    setChartConfig({ yField: key || null, chartType: types[0] ?? null, groupByField: null })
+    setChartConfig({ yField: key, chartType: types[0] ?? null, groupByField: null })
   }
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Dashboard</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Total tasks" value={stats?.totalTasks ?? '—'} />
@@ -82,95 +85,106 @@ export function DashboardPage() {
         <StatCard label="Wins this quarter" value={stats?.winsThisQuarter ?? '—'} />
       </div>
 
-      <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">Chart configuration</h2>
+      <Card className="mb-6 p-4">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Chart configuration</h2>
         <div className="flex flex-wrap items-end gap-3">
           <Field label="X field">
-            <select
-              value={chartConfig.xField ?? ''}
-              onChange={(e) => handleXFieldChange(e.target.value)}
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-            >
-              <option value="">Select…</option>
-              {catalog.map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
+            <Select value={chartConfig.xField ?? undefined} onValueChange={handleXFieldChange}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Select…" />
+              </SelectTrigger>
+              <SelectContent>
+                {catalog.map((f) => (
+                  <SelectItem key={f.key} value={f.key}>
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
 
           <Field label="Y field">
-            <select
-              value={chartConfig.yField ?? ''}
-              onChange={(e) => handleYFieldChange(e.target.value)}
-              disabled={!xField}
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm disabled:opacity-50"
-            >
-              <option value="">Select…</option>
-              {yOptions.map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
+            <Select value={chartConfig.yField ?? undefined} onValueChange={handleYFieldChange} disabled={!xField}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Select…" />
+              </SelectTrigger>
+              <SelectContent>
+                {yOptions.map((f) => (
+                  <SelectItem key={f.key} value={f.key}>
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
 
           {validChartTypes.length > 1 && (
             <Field label="Chart type">
-              <select
-                value={chartConfig.chartType ?? ''}
-                onChange={(e) => setChartConfig({ chartType: e.target.value as ChartType })}
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+              <Select
+                value={chartConfig.chartType ?? undefined}
+                onValueChange={(v) => setChartConfig({ chartType: v as ChartType })}
               >
-                {validChartTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {validChartTypes.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           )}
 
           {needsAggregationPicker(chartConfig.chartType) && (
             <Field label="Aggregation">
-              <select
+              <Select
                 value={chartConfig.aggregation}
-                onChange={(e) => setChartConfig({ aggregation: e.target.value as Aggregation })}
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                onValueChange={(v) => setChartConfig({ aggregation: v as Aggregation })}
               >
-                <option value="sum">sum</option>
-                <option value="avg">avg</option>
-                <option value="count">count</option>
-              </select>
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sum">sum</SelectItem>
+                  <SelectItem value="avg">avg</SelectItem>
+                  <SelectItem value="count">count</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
           )}
 
           {groupByEnabled && groupByOptions.length > 0 && (
             <Field label="Group by (optional)">
-              <select
-                value={chartConfig.groupByField ?? ''}
-                onChange={(e) => setChartConfig({ groupByField: e.target.value || null })}
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+              <Select
+                value={chartConfig.groupByField ?? NO_GROUP_BY}
+                onValueChange={(v) => setChartConfig({ groupByField: v === NO_GROUP_BY ? null : v })}
               >
-                <option value="">None</option>
-                {groupByOptions.map((f) => (
-                  <option key={f.key} value={f.key}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_GROUP_BY}>None</SelectItem>
+                  {groupByOptions.map((f) => (
+                    <SelectItem key={f.key} value={f.key}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           )}
         </div>
         {xField && yField && validChartTypes.length === 0 && (
-          <p className="mt-3 text-sm text-amber-700">
+          <p className="mt-3 text-sm text-destructive">
             No chart type supports {xField.label} ({xField.type}) + {yField.label} ({yField.type}).
           </p>
         )}
-      </div>
+      </Card>
 
-      <div className="rounded-md border border-gray-200 bg-white p-4">
+      <Card className="p-4">
         {xField && yField && chartConfig.chartType ? (
           <ChartRenderer
             boardId={boardId}
@@ -183,17 +197,19 @@ export function DashboardPage() {
             labelFor={labelFor}
           />
         ) : (
-          <p className="py-12 text-center text-sm text-gray-400">Pick an X and Y field to render a chart.</p>
+          <p className="py-12 text-center text-sm text-muted-foreground">Pick an X and Y field to render a chart.</p>
         )}
-      </div>
+      </Card>
     </div>
   )
 }
 
+const NO_GROUP_BY = '__none__'
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-gray-700">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
       {children}
     </div>
   )
@@ -201,10 +217,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-md border border-gray-200 bg-white p-4">
-      <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
-    </div>
+    <Card className="p-4">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
+    </Card>
   )
 }
 
@@ -269,8 +285,8 @@ function ScatterChartView({
     [rows, xField, yField],
   )
 
-  if (isLoading) return <p className="py-12 text-center text-sm text-gray-400">Loading…</p>
-  if (points.length === 0) return <p className="py-12 text-center text-sm text-gray-400">No data yet.</p>
+  if (isLoading) return <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
+  if (points.length === 0) return <p className="py-12 text-center text-sm text-muted-foreground">No data yet.</p>
 
   return (
     <ResponsiveContainer width="100%" height={360}>
@@ -315,8 +331,8 @@ function AggregateChartView({
 
   const groupField = isSelectSelectPairing ? yField : groupByField
 
-  if (isLoading) return <p className="py-12 text-center text-sm text-gray-400">Loading…</p>
-  if (rows.length === 0) return <p className="py-12 text-center text-sm text-gray-400">No data yet.</p>
+  if (isLoading) return <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
+  if (rows.length === 0) return <p className="py-12 text-center text-sm text-muted-foreground">No data yet.</p>
 
   if (chartType === 'heatmap') {
     const grid = heatmapGrid(
@@ -331,7 +347,7 @@ function AggregateChartView({
             <tr>
               <th className="p-2" />
               {grid.yValues.map((y) => (
-                <th key={y.raw} className="p-2 text-left font-medium text-gray-500">
+                <th key={y.raw} className="p-2 text-left font-medium text-muted-foreground">
                   {y.label}
                 </th>
               ))}
@@ -340,7 +356,7 @@ function AggregateChartView({
           <tbody>
             {grid.xValues.map((x) => (
               <tr key={x.raw}>
-                <th className="p-2 text-left font-medium text-gray-500">{x.label}</th>
+                <th className="p-2 text-left font-medium text-muted-foreground">{x.label}</th>
                 {grid.yValues.map((y) => {
                   const value = grid.valueAt(x.raw, y.raw)
                   const intensity = value / grid.max

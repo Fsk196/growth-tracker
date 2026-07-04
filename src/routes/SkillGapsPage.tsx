@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Plus } from 'lucide-react'
 import { useUiStore } from '../store/uiStore'
 import {
   useCreateSkillGap,
@@ -7,6 +8,19 @@ import {
   useUpdateSkillGap,
   type SkillGap,
 } from '../features/skillGaps/useSkillGaps'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -17,7 +31,7 @@ export function SkillGapsPage() {
   const updateSkillGap = useUpdateSkillGap(boardId)
   const deleteSkillGap = useDeleteSkillGap(boardId)
 
-  const [showForm, setShowForm] = useState(false)
+  const [open, setOpen] = useState(false)
   const [skillArea, setSkillArea] = useState('')
   const [currentDesc, setCurrentDesc] = useState('')
   const [targetDesc, setTargetDesc] = useState('')
@@ -42,7 +56,7 @@ export function SkillGapsPage() {
           setCurrentDesc('')
           setTargetDesc('')
           setCurrentScore('3')
-          setShowForm(false)
+          setOpen(false)
         },
       },
     )
@@ -61,135 +75,125 @@ export function SkillGapsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Skill Gap Map</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-        >
-          {showForm ? 'Close' : 'Add skill area'}
-        </button>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Skill Gap Map</h1>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus /> Add skill area
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add skill area</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="skill-area" className="mb-1.5 block">
+                  Skill area
+                </Label>
+                <Input id="skill-area" value={skillArea} onChange={(e) => setSkillArea(e.target.value)} required />
+              </div>
+              <div>
+                <Label htmlFor="skill-score" className="mb-1.5 block">
+                  Current score (1-5)
+                </Label>
+                <Input
+                  id="skill-score"
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={currentScore}
+                  onChange={(e) => setCurrentScore(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="skill-current" className="mb-1.5 block">
+                  Current level
+                </Label>
+                <Input id="skill-current" value={currentDesc} onChange={(e) => setCurrentDesc(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="skill-target" className="mb-1.5 block">
+                  Target level
+                </Label>
+                <Input id="skill-target" value={targetDesc} onChange={(e) => setTargetDesc(e.target.value)} />
+              </div>
+              <DialogFooter className="sm:col-span-2">
+                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createSkillGap.isPending}>
+                  Add
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {showForm && (
-        <form
-          onSubmit={handleCreate}
-          className="mb-6 grid grid-cols-1 gap-4 rounded-md border border-gray-200 bg-white p-4 sm:grid-cols-2"
-        >
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Skill area</label>
-            <input
-              value={skillArea}
-              onChange={(e) => setSkillArea(e.target.value)}
-              required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Current score (1-5)</label>
-            <input
-              type="number"
-              min={1}
-              max={5}
-              value={currentScore}
-              onChange={(e) => setCurrentScore(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Current level</label>
-            <input
-              value={currentDesc}
-              onChange={(e) => setCurrentDesc(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Target level</label>
-            <input
-              value={targetDesc}
-              onChange={(e) => setTargetDesc(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={createSkillGap.isPending}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-            >
-              Add
-            </button>
-          </div>
-        </form>
-      )}
-
-      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Skill area</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Current level</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Target level</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Score (1-5)</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Last reviewed</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Skill area</TableHead>
+              <TableHead>Current level</TableHead>
+              <TableHead>Target level</TableHead>
+              <TableHead>Score (1-5)</TableHead>
+              <TableHead>Last reviewed</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
                   Loading…
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : skillGaps.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
                   No skill areas tracked yet.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               skillGaps.map((sg) => (
-                <tr key={sg.id}>
-                  <td className="px-4 py-2 font-medium text-gray-900">{sg.skill_area}</td>
-                  <td className="px-4 py-2">{sg.current_level_desc ?? '—'}</td>
-                  <td className="px-4 py-2">{sg.target_level_desc ?? '—'}</td>
-                  <td className="px-4 py-2">
+                <TableRow key={sg.id}>
+                  <TableCell className="font-medium">{sg.skill_area}</TableCell>
+                  <TableCell>{sg.current_level_desc ?? '—'}</TableCell>
+                  <TableCell>{sg.target_level_desc ?? '—'}</TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
-                      <input
+                      <Input
                         type="number"
                         min={1}
                         max={5}
                         value={editedScores[sg.id] ?? sg.current_score}
-                        onChange={(e) =>
-                          setEditedScores((prev) => ({ ...prev, [sg.id]: e.target.value }))
-                        }
-                        className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                        onChange={(e) => setEditedScores((prev) => ({ ...prev, [sg.id]: e.target.value }))}
+                        className="w-16"
                       />
-                      <button
-                        onClick={() => saveScore(sg)}
-                        disabled={updateSkillGap.isPending}
-                        className="text-indigo-600 hover:underline disabled:opacity-50"
-                      >
+                      <Button variant="link" size="sm" onClick={() => saveScore(sg)} disabled={updateSkillGap.isPending}>
                         Save
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">{sg.last_reviewed_date}</td>
-                  <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <button
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{sg.last_reviewed_date}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-destructive"
                       onClick={() => deleteSkillGap.mutate(sg.id)}
-                      className="text-red-600 hover:underline"
                     >
                       Delete
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   )
 }

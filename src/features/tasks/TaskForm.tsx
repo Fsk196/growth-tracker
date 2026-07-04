@@ -3,8 +3,14 @@ import type { Project } from '../boards/useProjects'
 import type { Task } from './useTasks'
 import type { FieldDefinition } from '../fields/useFieldDefinitions'
 import type { Json } from '../../types/database'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DialogFooter } from '@/components/ui/dialog'
 
 const TASK_TYPES = ['feature', 'bug', 'refactor', 'accessibility', 'review'] as const
+const NONE_VALUE = '__none__'
 
 export interface TaskFormValues {
   title: string
@@ -38,7 +44,7 @@ export function TaskForm({
   const [title, setTitle] = useState(initialValues?.title ?? '')
   const [type, setType] = useState(initialValues?.type ?? TASK_TYPES[0])
   const [date, setDate] = useState(initialValues?.date ?? today())
-  const [projectId, setProjectId] = useState(initialValues?.project_id ?? '')
+  const [projectId, setProjectId] = useState(initialValues?.project_id ?? NONE_VALUE)
   const [impact, setImpact] = useState(initialValues?.impact ?? '')
   const [timeSpent, setTimeSpent] = useState(initialValues?.time_spent?.toString() ?? '')
   const initialCustomFields = (initialValues?.custom_fields as Record<string, Json>) ?? {}
@@ -55,7 +61,7 @@ export function TaskForm({
       title: title.trim(),
       type,
       date,
-      project_id: projectId || null,
+      project_id: projectId === NONE_VALUE ? null : projectId,
       impact: impact.trim() || null,
       time_spent: timeSpent ? Number(timeSpent) : null,
       custom_fields: customFields,
@@ -65,117 +71,113 @@ export function TaskForm({
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-gray-700">Title</label>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-        />
+        <Label htmlFor="task-title" className="mb-1.5 block">
+          Title
+        </Label>
+        <Input id="task-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-        >
-          {TASK_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
+        <Label className="mb-1.5 block">Type</Label>
+        <Select value={type} onValueChange={setType}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {TASK_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {t}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Date</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          required
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-        />
+        <Label htmlFor="task-date" className="mb-1.5 block">
+          Date
+        </Label>
+        <Input id="task-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Project</label>
-        <select
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-        >
-          <option value="">None</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <Label className="mb-1.5 block">Project</Label>
+        <Select value={projectId} onValueChange={setProjectId}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE_VALUE}>None</SelectItem>
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Time spent (min)</label>
-        <input
+        <Label htmlFor="task-time-spent" className="mb-1.5 block">
+          Time spent (min)
+        </Label>
+        <Input
+          id="task-time-spent"
           type="number"
           min={0}
           value={timeSpent}
           onChange={(e) => setTimeSpent(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
         />
       </div>
 
       <div className="sm:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-gray-700">Impact</label>
-        <input
-          value={impact}
-          onChange={(e) => setImpact(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-        />
+        <Label htmlFor="task-impact" className="mb-1.5 block">
+          Impact
+        </Label>
+        <Input id="task-impact" value={impact} onChange={(e) => setImpact(e.target.value)} />
       </div>
 
       {fieldDefinitions.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-4 sm:col-span-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 border-t border-border pt-4 sm:col-span-2 sm:grid-cols-2">
           {fieldDefinitions.map((field) => (
             <div key={field.id}>
-              <label className="mb-1 block text-sm font-medium text-gray-700">{field.label}</label>
+              <Label className="mb-1.5 block">{field.label}</Label>
               {field.field_type === 'select' ? (
-                <select
-                  value={(customFields[field.field_key] as string) ?? ''}
-                  onChange={(e) => setCustomField(field.field_key, e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                <Select
+                  value={(customFields[field.field_key] as string) ?? NONE_VALUE}
+                  onValueChange={(v) => setCustomField(field.field_key, v === NONE_VALUE ? null : v)}
                 >
-                  <option value="">—</option>
-                  {(Array.isArray(field.select_options) ? field.select_options : []).map((opt) => (
-                    <option key={String(opt)} value={String(opt)}>
-                      {String(opt)}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE_VALUE}>—</SelectItem>
+                    {(Array.isArray(field.select_options) ? field.select_options : []).map((opt) => (
+                      <SelectItem key={String(opt)} value={String(opt)}>
+                        {String(opt)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : field.field_type === 'number' ? (
-                <input
+                <Input
                   type="number"
                   value={(customFields[field.field_key] as number) ?? ''}
                   onChange={(e) =>
                     setCustomField(field.field_key, e.target.value === '' ? null : Number(e.target.value))
                   }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                 />
               ) : field.field_type === 'date' ? (
-                <input
+                <Input
                   type="date"
                   value={(customFields[field.field_key] as string) ?? ''}
                   onChange={(e) => setCustomField(field.field_key, e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                 />
               ) : (
-                <input
+                <Input
                   type="text"
                   value={(customFields[field.field_key] as string) ?? ''}
                   onChange={(e) => setCustomField(field.field_key, e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
                 />
               )}
             </div>
@@ -183,24 +185,16 @@ export function TaskForm({
         </div>
       )}
 
-      <div className="flex gap-2 sm:col-span-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {initialValues ? 'Save changes' : 'Add task'}
-        </button>
+      <DialogFooter className="sm:col-span-2">
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
+          <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         )}
-      </div>
+        <Button type="submit" disabled={submitting}>
+          {initialValues ? 'Save changes' : 'Add task'}
+        </Button>
+      </DialogFooter>
     </form>
   )
 }

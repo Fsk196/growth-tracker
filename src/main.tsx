@@ -5,13 +5,19 @@ import './index.css'
 import App from './App.tsx'
 import { queryClient } from './lib/queryClient'
 import { AuthProvider } from './features/auth/AuthProvider'
+import { ThemeProvider } from './features/theme/ThemeProvider'
+import { TooltipProvider } from './components/ui/tooltip'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider delayDuration={200}>
+            <App />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

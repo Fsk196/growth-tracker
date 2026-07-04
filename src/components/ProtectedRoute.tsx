@@ -6,7 +6,11 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth()
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-gray-500">Loading…</div>
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+        Loading…
+      </div>
+    )
   }
 
   if (!session) {

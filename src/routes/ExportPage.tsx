@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
+import { Download } from 'lucide-react'
 import { useUiStore } from '../store/uiStore'
 import { supabase } from '../lib/supabase'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 
 export function ExportPage() {
   const boardId = useUiStore((s) => s.selectedBoardId)
@@ -60,21 +63,17 @@ export function ExportPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Export</h1>
-      <div className="rounded-md border border-gray-200 bg-white p-6">
-        <p className="mb-4 text-sm text-gray-600">
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">Export</h1>
+      <Card className="p-6">
+        <p className="mb-4 text-sm text-muted-foreground">
           Export every table for this board — projects, tasks, field definitions, learnings, wins, and skill
           gaps (with history) — as a single .xlsx file.
         </p>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {exporting ? 'Exporting…' : 'Export board as .xlsx'}
-        </button>
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-      </div>
+        <Button onClick={handleExport} disabled={exporting}>
+          <Download /> {exporting ? 'Exporting…' : 'Export board as .xlsx'}
+        </Button>
+        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      </Card>
     </div>
   )
 }

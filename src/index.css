@@ -1,1 +1,125 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.5rem;
+
+  /* Notion design system — light (daylight) surface */
+  --background: #f6f5f4; /* canvas-soft */
+  --foreground: #0d0d0c; /* ink */
+  --card: #ffffff; /* surface */
+  --card-foreground: #0d0d0c;
+  --popover: #ffffff;
+  --popover-foreground: #0d0d0c;
+  --primary: #0075de;
+  --primary-foreground: #ffffff;
+  --primary-active: #005bab;
+  --secondary: #f1f0ee;
+  --secondary-foreground: #0d0d0c;
+  --muted: #efeeec;
+  --muted-foreground: #615d59; /* stone */
+  --accent: #efeeec;
+  --accent-foreground: #0d0d0c;
+  --destructive: #b3261e;
+  --destructive-foreground: #ffffff;
+  --border: #e6e6e6; /* hairline */
+  --input: #dddddd;
+  --ring: #0075de;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #31302e;
+  --sidebar-border: #e6e6e6;
+  --sidebar-accent: #f6f5f4;
+  --sidebar-accent-foreground: #0d0d0c;
+  --sidebar-primary: #0075de;
+
+  --night: #213183;
+}
+
+.dark {
+  /* Warm-charcoal inversion of the same system, not a cold slate */
+  --background: #1c1b1a;
+  --foreground: #f2f1ef;
+  --card: #242322;
+  --card-foreground: #f2f1ef;
+  --popover: #242322;
+  --popover-foreground: #f2f1ef;
+  --primary: #4c9aea;
+  --primary-foreground: #0a0a09;
+  --primary-active: #74b3f0;
+  --secondary: #2c2b29;
+  --secondary-foreground: #f2f1ef;
+  --muted: #2c2b29;
+  --muted-foreground: #a39e98; /* ash */
+  --accent: #2c2b29;
+  --accent-foreground: #f2f1ef;
+  --destructive: #e5534b;
+  --destructive-foreground: #0a0a09;
+  --border: #34322f;
+  --input: #3a3835;
+  --ring: #4c9aea;
+
+  --sidebar: #201f1e;
+  --sidebar-foreground: #d8d5d1;
+  --sidebar-border: #302e2b;
+  --sidebar-accent: #2c2b29;
+  --sidebar-accent-foreground: #f2f1ef;
+  --sidebar-primary: #4c9aea;
+
+  --night: #4655a8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-active: var(--primary-active);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+
+  --color-night: var(--night);
+
+  --radius-xs: 4px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --font-sans: Inter, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings:
+      "lnum" 1,
+      "locl" 1;
+  }
+}

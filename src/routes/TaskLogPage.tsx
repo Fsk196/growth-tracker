@@ -1,13 +1,30 @@
-import { Fragment, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { Plus } from 'lucide-react'
 import { useUiStore } from '../store/uiStore'
 import { useCreateProject, useProjects } from '../features/boards/useProjects'
 import { useCreateTask, useDeleteTask, useTasks, useUpdateTask, type Task } from '../features/tasks/useTasks'
 import { TaskForm, type TaskFormValues } from '../features/tasks/TaskForm'
 import { useCreateFieldDefinition, useFieldDefinitions } from '../features/fields/useFieldDefinitions'
 import type { Json } from '../types/database'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 const TASK_TYPES = ['feature', 'bug', 'refactor', 'accessibility', 'review']
 const FIELD_TYPES = ['text', 'number', 'date', 'select'] as const
+const ALL_VALUE = '__all__'
 
 export function TaskLogPage() {
   const boardId = useUiStore((s) => s.selectedBoardId)
@@ -15,9 +32,10 @@ export function TaskLogPage() {
   const { data: projects = [] } = useProjects(boardId)
   const createProject = useCreateProject(boardId)
   const [newProjectName, setNewProjectName] = useState('')
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const { data: fieldDefinitions = [] } = useFieldDefinitions(boardId)
   const createFieldDefinition = useCreateFieldDefinition(boardId)
-  const [showFieldForm, setShowFieldForm] = useState(false)
+  const [fieldDialogOpen, setFieldDialogOpen] = useState(false)
   const [newField, setNewField] = useState({ label: '', field_type: 'text' as (typeof FIELD_TYPES)[number], options: '' })
   const { data: tasks = [], isLoading } = useTasks(boardId, {
     projectId: taskFilters.projectId,
@@ -30,7 +48,7 @@ export function TaskLogPage() {
   const updateTask = useUpdateTask(boardId)
   const deleteTask = useDeleteTask(boardId)
 
-  const [showForm, setShowForm] = useState(false)
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   function projectName(projectId: string | null) {
@@ -38,12 +56,15 @@ export function TaskLogPage() {
   }
 
   function handleCreate(values: TaskFormValues) {
-    createTask.mutate(values, { onSuccess: () => setShowForm(false) })
+    createTask.mutate(values, { onSuccess: () => setTaskDialogOpen(false) })
   }
 
   function handleUpdate(values: TaskFormValues) {
     if (!editingTask) return
-    updateTask.mutate({ id: editingTask.id, ...values }, { onSuccess: () => setEditingTask(null) })
+    updateTask.mutate(
+      { id: editingTask.id, ...values },
+      { onSuccess: () => setEditingTask(null) },
+    )
   }
 
   function slugify(label: string) {
@@ -65,7 +86,12 @@ export function TaskLogPage() {
         field_type: newField.field_type,
         select_options: selectOptions,
       },
-      { onSuccess: () => setNewField({ label: '', field_type: 'text', options: '' }) },
+      {
+        onSuccess: () => {
+          setNewField({ label: '', field_type: 'text', options: '' })
+          setFieldDialogOpen(false)
+        },
+      },
     )
   }
 
@@ -77,247 +103,285 @@ export function TaskLogPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Task Log</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-        >
-          {showForm ? 'Close' : 'Add task'}
-        </button>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Task Log</h1>
+        <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus /> Add task
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add task</DialogTitle>
+            </DialogHeader>
+            <TaskForm
+              projects={projects}
+              fieldDefinitions={fieldDefinitions}
+              onSubmit={handleCreate}
+              onCancel={() => setTaskDialogOpen(false)}
+              submitting={createTask.isPending}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {showForm && (
-        <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
-          {projects.length === 0 && (
-            <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              No projects yet — add one below, then create tasks against it.
-            </p>
+      <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit task</DialogTitle>
+          </DialogHeader>
+          {editingTask && (
+            <TaskForm
+              projects={projects}
+              fieldDefinitions={fieldDefinitions}
+              initialValues={editingTask}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingTask(null)}
+              submitting={updateTask.isPending}
+            />
           )}
-          <TaskForm
-            projects={projects}
-            fieldDefinitions={fieldDefinitions}
-            onSubmit={handleCreate}
-            submitting={createTask.isPending}
-          />
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      <div className="mb-6 flex items-center gap-2 rounded-md border border-gray-200 bg-white p-3">
-        <span className="text-sm font-medium text-gray-700">Projects:</span>
-        {projects.map((p) => (
-          <span key={p.id} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-            {p.name}
-          </span>
-        ))}
-        <input
-          value={newProjectName}
-          onChange={(e) => setNewProjectName(e.target.value)}
-          placeholder="New project name"
-          className="ml-auto rounded-md border border-gray-300 px-2 py-1 text-sm"
-        />
-        <button
-          onClick={() => {
-            if (!newProjectName.trim()) return
-            createProject.mutate(
-              { name: newProjectName.trim(), color: null },
-              { onSuccess: () => setNewProjectName('') },
-            )
-          }}
-          className="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"
-        >
-          Add project
-        </button>
-      </div>
-
-      <div className="mb-6 rounded-md border border-gray-200 bg-white p-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">Custom fields:</span>
-          {fieldDefinitions.map((f) => (
-            <span key={f.id} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-              {f.label} ({f.field_type})
-            </span>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mr-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Projects:</span>
+          {projects.map((p) => (
+            <Badge key={p.id} variant="secondary">
+              {p.name}
+            </Badge>
           ))}
-          <button
-            onClick={() => setShowFieldForm((v) => !v)}
-            className="ml-auto rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50"
-          >
-            {showFieldForm ? 'Close' : 'Add custom field'}
-          </button>
         </div>
-        {showFieldForm && (
-          <form onSubmit={handleCreateField} className="mt-3 flex flex-wrap items-end gap-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Label</label>
-              <input
-                value={newField.label}
-                onChange={(e) => setNewField((f) => ({ ...f, label: e.target.value }))}
-                required
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+        <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="secondary" size="sm">
+              <Plus /> Project
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add project</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-project-name">Name</Label>
+              <Input
+                id="new-project-name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="e.g. Marketplace"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Type</label>
-              <select
-                value={newField.field_type}
-                onChange={(e) =>
-                  setNewField((f) => ({ ...f, field_type: e.target.value as (typeof FIELD_TYPES)[number] }))
-                }
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setProjectDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={createProject.isPending}
+                onClick={() => {
+                  if (!newProjectName.trim()) return
+                  createProject.mutate(
+                    { name: newProjectName.trim(), color: null },
+                    {
+                      onSuccess: () => {
+                        setNewProjectName('')
+                        setProjectDialogOpen(false)
+                      },
+                    },
+                  )
+                }}
               >
-                {FIELD_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {newField.field_type === 'select' && (
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">
-                  Options (comma-separated)
-                </label>
-                <input
-                  value={newField.options}
-                  onChange={(e) => setNewField((f) => ({ ...f, options: e.target.value }))}
-                  className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                Add project
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <div className="mx-2 h-4 w-px bg-border" />
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Custom fields:</span>
+          {fieldDefinitions.map((f) => (
+            <Badge key={f.id} variant="secondary">
+              {f.label} ({f.field_type})
+            </Badge>
+          ))}
+        </div>
+        <Dialog open={fieldDialogOpen} onOpenChange={setFieldDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="secondary" size="sm">
+              <Plus /> Custom field
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add custom field</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateField} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="field-label">Label</Label>
+                <Input
+                  id="field-label"
+                  value={newField.label}
+                  onChange={(e) => setNewField((f) => ({ ...f, label: e.target.value }))}
+                  required
                 />
               </div>
-            )}
-            <button
-              type="submit"
-              disabled={createFieldDefinition.isPending}
-              className="rounded-md bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-            >
-              Add field
-            </button>
-          </form>
-        )}
+              <div className="space-y-1.5">
+                <Label>Type</Label>
+                <Select
+                  value={newField.field_type}
+                  onValueChange={(v) => setNewField((f) => ({ ...f, field_type: v as (typeof FIELD_TYPES)[number] }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FIELD_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {newField.field_type === 'select' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="field-options">Options (comma-separated)</Label>
+                  <Input
+                    id="field-options"
+                    value={newField.options}
+                    onChange={(e) => setNewField((f) => ({ ...f, options: e.target.value }))}
+                  />
+                </div>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="secondary" onClick={() => setFieldDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createFieldDefinition.isPending}>
+                  Add field
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-3 rounded-md border border-gray-200 bg-white p-3">
-        <select
-          value={taskFilters.projectId ?? ''}
-          onChange={(e) => setTaskFilters({ projectId: e.target.value || null })}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-        >
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={taskFilters.type ?? ''}
-          onChange={(e) => setTaskFilters({ type: e.target.value || null })}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-        >
-          <option value="">All types</option>
-          {TASK_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={taskFilters.dateFrom ?? ''}
-          onChange={(e) => setTaskFilters({ dateFrom: e.target.value || null })}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-        />
-        <span className="self-center text-sm text-gray-400">to</span>
-        <input
-          type="date"
-          value={taskFilters.dateTo ?? ''}
-          onChange={(e) => setTaskFilters({ dateTo: e.target.value || null })}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-        />
-        <button onClick={resetTaskFilters} className="text-sm text-indigo-600 hover:underline">
-          Clear filters
-        </button>
-      </div>
-
-      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Date</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Title</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Type</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Project</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Time (min)</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-500">Impact</th>
-              {fieldDefinitions.map((f) => (
-                <th key={f.id} className="px-4 py-2 text-left font-medium text-gray-500">
-                  {f.label}
-                </th>
+      <Card className="mb-4 p-3">
+        <div className="flex flex-wrap gap-3">
+          <Select
+            value={taskFilters.projectId ?? ALL_VALUE}
+            onValueChange={(v) => setTaskFilters({ projectId: v === ALL_VALUE ? null : v })}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>All projects</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
               ))}
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={taskFilters.type ?? ALL_VALUE}
+            onValueChange={(v) => setTaskFilters({ type: v === ALL_VALUE ? null : v })}
+          >
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>All types</SelectItem>
+              {TASK_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Input
+            type="date"
+            value={taskFilters.dateFrom ?? ''}
+            onChange={(e) => setTaskFilters({ dateFrom: e.target.value || null })}
+            className="w-40"
+          />
+          <span className="self-center text-sm text-muted-foreground">to</span>
+          <Input
+            type="date"
+            value={taskFilters.dateTo ?? ''}
+            onChange={(e) => setTaskFilters({ dateTo: e.target.value || null })}
+            className="w-40"
+          />
+          <Button variant="ghost" size="sm" onClick={resetTaskFilters}>
+            Clear filters
+          </Button>
+        </div>
+      </Card>
+
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Project</TableHead>
+              <TableHead>Time (min)</TableHead>
+              <TableHead>Impact</TableHead>
+              {fieldDefinitions.map((f) => (
+                <TableHead key={f.id}>{f.label}</TableHead>
+              ))}
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isLoading ? (
-              <tr>
-                <td colSpan={7 + fieldDefinitions.length} className="px-4 py-6 text-center text-gray-400">
+              <TableRow>
+                <TableCell colSpan={7 + fieldDefinitions.length} className="py-6 text-center text-muted-foreground">
                   Loading…
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : tasks.length === 0 ? (
-              <tr>
-                <td colSpan={7 + fieldDefinitions.length} className="px-4 py-6 text-center text-gray-400">
+              <TableRow>
+                <TableCell colSpan={7 + fieldDefinitions.length} className="py-6 text-center text-muted-foreground">
                   No tasks yet.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               tasks.map((task) => (
-                <Fragment key={task.id}>
-                  <tr>
-                    <td className="px-4 py-2 whitespace-nowrap">{task.date}</td>
-                    <td className="px-4 py-2">{task.title}</td>
-                    <td className="px-4 py-2 capitalize">{task.type}</td>
-                    <td className="px-4 py-2">{projectName(task.project_id)}</td>
-                    <td className="px-4 py-2">{task.time_spent ?? '—'}</td>
-                    <td className="px-4 py-2">{task.impact ?? '—'}</td>
-                    {fieldDefinitions.map((f) => (
-                      <td key={f.id} className="px-4 py-2">
-                        {customFieldValue(task, f.field_key)}
-                      </td>
-                    ))}
-                    <td className="px-4 py-2 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => setEditingTask(editingTask?.id === task.id ? null : task)}
-                        className="mr-3 text-indigo-600 hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteTask.mutate(task.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                  {editingTask?.id === task.id && (
-                    <tr>
-                      <td colSpan={7 + fieldDefinitions.length} className="bg-gray-50 px-4 py-4">
-                        <TaskForm
-                          projects={projects}
-                          fieldDefinitions={fieldDefinitions}
-                          initialValues={task}
-                          onSubmit={handleUpdate}
-                          onCancel={() => setEditingTask(null)}
-                          submitting={updateTask.isPending}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                <TableRow key={task.id}>
+                  <TableCell className="whitespace-nowrap">{task.date}</TableCell>
+                  <TableCell>{task.title}</TableCell>
+                  <TableCell className="capitalize">{task.type}</TableCell>
+                  <TableCell>{projectName(task.project_id)}</TableCell>
+                  <TableCell>{task.time_spent ?? '—'}</TableCell>
+                  <TableCell>{task.impact ?? '—'}</TableCell>
+                  {fieldDefinitions.map((f) => (
+                    <TableCell key={f.id}>{customFieldValue(task, f.field_key)}</TableCell>
+                  ))}
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button variant="link" size="sm" onClick={() => setEditingTask(task)}>
+                      Edit
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => deleteTask.mutate(task.id)}
+                    >
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   )
 }
