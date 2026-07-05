@@ -149,7 +149,7 @@ export function DashboardPage() {
           </Card>
         )}
 
-        <DialogContent className="max-w-xl">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{hasChart ? 'Edit chart' : 'Add chart'}</DialogTitle>
           </DialogHeader>
@@ -159,6 +159,7 @@ export function DashboardPage() {
               <Select
                 value={chartConfig.projectId ?? ALL_PROJECTS}
                 onValueChange={(v) => v && setChartConfig({ projectId: v === ALL_PROJECTS ? null : v })}
+                items={{ [ALL_PROJECTS]: 'All projects', ...Object.fromEntries(projects.map((p) => [p.id, p.name])) }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -176,7 +177,11 @@ export function DashboardPage() {
 
             <div className="flex flex-wrap items-end gap-3">
               <Field label="X field">
-                <Select value={chartConfig.xField ?? undefined} onValueChange={(v) => v && handleXFieldChange(v)}>
+                <Select
+                  value={chartConfig.xField ?? undefined}
+                  onValueChange={(v) => v && handleXFieldChange(v)}
+                  items={Object.fromEntries(catalog.map((f) => [f.key, f.label]))}
+                >
                   <SelectTrigger className="w-44">
                     <SelectValue placeholder="Select…" />
                   </SelectTrigger>
@@ -195,6 +200,7 @@ export function DashboardPage() {
                   value={chartConfig.yField ?? undefined}
                   onValueChange={(v) => v && handleYFieldChange(v)}
                   disabled={!xField}
+                  items={Object.fromEntries(yOptions.map((f) => [f.key, f.label]))}
                 >
                   <SelectTrigger className="w-44">
                     <SelectValue placeholder="Select…" />
@@ -252,6 +258,7 @@ export function DashboardPage() {
                   <Select
                     value={chartConfig.groupByField ?? NO_GROUP_BY}
                     onValueChange={(v) => setChartConfig({ groupByField: v === NO_GROUP_BY ? null : v })}
+                    items={{ [NO_GROUP_BY]: 'None', ...Object.fromEntries(groupByOptions.map((f) => [f.key, f.label])) }}
                   >
                     <SelectTrigger className="w-44">
                       <SelectValue />

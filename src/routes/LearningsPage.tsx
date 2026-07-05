@@ -131,12 +131,19 @@ export function LearningsPage() {
   const [editing, setEditing] = useState<Learning | null>(null)
 
   function handleExport() {
-    exportRowsToXlsx('Learnings', learnings, 'learnings')
+    const rows = learnings.map((learning) => ({
+      Date: learning.date,
+      Topic: learning.topic,
+      Source: learning.source,
+      Understood: learning.understood,
+      'Still fuzzy on': learning.still_fuzzy_on,
+    }))
+    exportRowsToXlsx('Learnings', rows, 'learnings')
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Learnings</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={handleExport} disabled={learnings.length === 0}>
@@ -146,7 +153,7 @@ export function LearningsPage() {
             <DialogTrigger render={<Button />}>
               <Plus /> Add learning
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add learning</DialogTitle>
               </DialogHeader>
@@ -168,7 +175,7 @@ export function LearningsPage() {
       </div>
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit learning</DialogTitle>
           </DialogHeader>

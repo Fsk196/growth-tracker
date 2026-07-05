@@ -80,12 +80,19 @@ export function SkillGapsPage() {
   }
 
   function handleExport() {
-    exportRowsToXlsx('Skill Gaps', skillGaps, 'skill-gaps')
+    const rows = skillGaps.map((sg) => ({
+      'Skill area': sg.skill_area,
+      'Current level': sg.current_level_desc,
+      'Target level': sg.target_level_desc,
+      'Score (1-5)': sg.current_score,
+      'Last reviewed': sg.last_reviewed_date,
+    }))
+    exportRowsToXlsx('Skill Gaps', rows, 'skill-gaps')
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Skill Gap Map</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={handleExport} disabled={skillGaps.length === 0}>
@@ -95,7 +102,7 @@ export function SkillGapsPage() {
             <DialogTrigger render={<Button />}>
               <Plus /> Add skill area
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add skill area</DialogTitle>
               </DialogHeader>

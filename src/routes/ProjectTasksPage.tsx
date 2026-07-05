@@ -121,12 +121,25 @@ export function ProjectTasksPage() {
   }
 
   function handleExport() {
-    exportRowsToXlsx('Tasks', tasks, `tasks-${project?.name ?? 'project'}`)
+    const rows = tasks.map((task) => {
+      const row: Record<string, unknown> = {
+        Date: task.date,
+        Title: task.title,
+        Type: task.type,
+        'Time (min)': task.time_spent,
+        Impact: task.impact,
+      }
+      for (const f of fieldDefinitions) {
+        row[f.label] = (task.custom_fields as Record<string, Json>)?.[f.field_key] ?? null
+      }
+      return row
+    })
+    exportRowsToXlsx('Tasks', rows, `tasks-${project?.name ?? 'project'}`)
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{project?.name ?? 'Tasks'}</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={handleExport} disabled={tasks.length === 0}>
@@ -136,7 +149,7 @@ export function ProjectTasksPage() {
             <DialogTrigger render={<Button />}>
               <Plus /> Add task
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add task</DialogTitle>
               </DialogHeader>
@@ -154,7 +167,7 @@ export function ProjectTasksPage() {
       </div>
 
       <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit task</DialogTitle>
           </DialogHeader>
@@ -245,6 +258,7 @@ export function ProjectTasksPage() {
           <Select
             value={taskFilters.type ?? ALL_VALUE}
             onValueChange={(v) => setTaskFilters({ type: v === ALL_VALUE ? null : v })}
+            items={{ [ALL_VALUE]: 'All types', ...Object.fromEntries(TASK_TYPES.map((t) => [t, t])) }}
           >
             <SelectTrigger className="w-36">
               <SelectValue placeholder="All types" />

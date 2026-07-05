@@ -47,12 +47,16 @@ export function WinsPage() {
   }
 
   function handleExport() {
-    exportRowsToXlsx('Wins', wins, 'wins')
+    const rows = wins.map((win) => ({
+      Date: win.date,
+      Title: win.title,
+    }))
+    exportRowsToXlsx('Wins', rows, 'wins')
   }
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Wins</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={handleExport} disabled={wins.length === 0}>

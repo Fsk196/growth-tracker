@@ -104,7 +104,11 @@ export function TaskForm({
       {!fixedProjectId && (
         <div>
           <Label className="mb-1.5 block">Project</Label>
-          <Select value={projectId} onValueChange={(v) => setProjectId(v ?? NONE_VALUE)}>
+          <Select
+            value={projectId}
+            onValueChange={(v) => setProjectId(v ?? NONE_VALUE)}
+            items={{ [NONE_VALUE]: 'None', ...Object.fromEntries(projects.map((p) => [p.id, p.name])) }}
+          >
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -149,6 +153,15 @@ export function TaskForm({
                 <Select
                   value={(customFields[field.field_key] as string) ?? NONE_VALUE}
                   onValueChange={(v) => setCustomField(field.field_key, v === NONE_VALUE ? null : v)}
+                  items={{
+                    [NONE_VALUE]: '—',
+                    ...Object.fromEntries(
+                      (Array.isArray(field.select_options) ? field.select_options : []).map((opt) => [
+                        String(opt),
+                        String(opt),
+                      ]),
+                    ),
+                  }}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />

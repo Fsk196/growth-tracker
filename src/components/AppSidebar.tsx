@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BookOpen,
+  ChevronDown,
+  ChevronRight,
   ChevronsUpDown,
   FolderKanban,
   LayoutDashboard,
@@ -68,7 +70,7 @@ function ActiveIndicator({ isActive }: { isActive: boolean }) {
   )
 }
 
-export function AppSidebar() {
+export function AppSidebar({ open = false }: { open?: boolean }) {
   const { session } = useAuth()
   const { data: boards = [] } = useBoards()
   const selectedBoardId = useUiStore((s) => s.selectedBoardId)
@@ -78,6 +80,7 @@ export function AppSidebar() {
   const createProject = useCreateProject(selectedBoardId)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
+  const [projectsOpen, setProjectsOpen] = useState(true)
 
   const currentBoard = boards.find((b) => b.id === selectedBoardId)
   const email = session?.user.email ?? ''
@@ -99,7 +102,12 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside
+      className={cn(
+        'fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 -translate-x-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 md:static md:translate-x-0',
+        open && 'translate-x-0',
+      )}
+    >
       <div className="p-3">
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -139,7 +147,13 @@ export function AppSidebar() {
 
         <div>
           <div className="mb-1 flex items-center justify-between px-2.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projects</span>
+            <button
+              onClick={() => setProjectsOpen((v) => !v)}
+              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+            >
+              {projectsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              Projects
+            </button>
             <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
               <DialogTrigger
                 render={
@@ -176,28 +190,32 @@ export function AppSidebar() {
             </Dialog>
           </div>
 
-          <NavLink to="/projects" end className={navLinkClasses}>
-            {({ isActive }) => (
-              <>
-                <ActiveIndicator isActive={isActive} />
-                <FolderKanban className="h-4 w-4 shrink-0" />
-                All projects
-              </>
-            )}
-          </NavLink>
-
-          <div className="mt-0.5 space-y-0.5">
-            {projects.map((project) => (
-              <NavLink key={project.id} to={`/projects/${project.id}`} className={navLinkClasses}>
+          {projectsOpen && (
+            <>
+              <NavLink to="/projects" end className={navLinkClasses}>
                 {({ isActive }) => (
                   <>
                     <ActiveIndicator isActive={isActive} />
-                    <span className="ml-6 truncate">{project.name}</span>
+                    <FolderKanban className="h-4 w-4 shrink-0" />
+                    All projects
                   </>
                 )}
               </NavLink>
-            ))}
-          </div>
+
+              <div className="mt-0.5 max-h-56 space-y-0.5 overflow-y-auto">
+                {projects.map((project) => (
+                  <NavLink key={project.id} to={`/projects/${project.id}`} className={navLinkClasses}>
+                    {({ isActive }) => (
+                      <>
+                        <ActiveIndicator isActive={isActive} />
+                        <span className="ml-6 truncate">{project.name}</span>
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="space-y-0.5">

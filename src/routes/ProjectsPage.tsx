@@ -43,12 +43,16 @@ export function ProjectsPage() {
   }
 
   function handleExport() {
-    exportRowsToXlsx('Projects', projects, 'projects')
+    const rows = projects.map((project) => ({
+      Name: project.name,
+      Status: project.status,
+    }))
+    exportRowsToXlsx('Projects', rows, 'projects')
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Projects</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={handleExport} disabled={projects.length === 0}>
