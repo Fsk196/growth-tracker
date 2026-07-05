@@ -26,6 +26,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -119,21 +120,22 @@ export function AppSidebar({ open = false }: { open?: boolean }) {
             }
           />
           <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuLabel>Boards</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {boards.map((board) => (
-              <DropdownMenuItem
-                key={board.id}
-                onClick={() => {
-                  if (board.id !== selectedBoardId) {
-                    setSelectedBoardId(board.id)
-                    navigate('/dashboard')
-                  }
-                }}
-              >
-                {board.name}
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Boards</DropdownMenuLabel>
+              {boards.map((board) => (
+                <DropdownMenuItem
+                  key={board.id}
+                  onClick={() => {
+                    if (board.id !== selectedBoardId) {
+                      setSelectedBoardId(board.id)
+                      navigate('/dashboard')
+                    }
+                  }}
+                >
+                  {board.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate('/boards')}>Manage boards…</DropdownMenuItem>
           </DropdownMenuContent>
