@@ -47,7 +47,19 @@ const defaultChartConfig: ChartConfig = {
 
 export const useUiStore = create<UiState>((set) => ({
   selectedBoardId: null,
-  setSelectedBoardId: (id) => set({ selectedBoardId: id }),
+  setSelectedBoardId: (id) =>
+    set((state) =>
+      id === state.selectedBoardId
+        ? {}
+        : {
+            selectedBoardId: id,
+            // Filters and chart config reference project ids / field keys
+            // scoped to the previous board — stale values here can point at
+            // a project or field that doesn't exist on the new board.
+            taskFilters: defaultTaskFilters,
+            chartConfig: defaultChartConfig,
+          },
+    ),
 
   taskFilters: defaultTaskFilters,
   setTaskFilters: (filters) =>

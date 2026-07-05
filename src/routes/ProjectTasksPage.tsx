@@ -35,7 +35,7 @@ export function ProjectTasksPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const boardId = useUiStore((s) => s.selectedBoardId)
   const { taskFilters, setTaskFilters, resetTaskFilters } = useUiStore()
-  const { data: projects = [] } = useProjects(boardId)
+  const { data: projects = [], isLoading: projectsLoading } = useProjects(boardId)
   const project = projects.find((p) => p.id === projectId)
 
   const { data: fieldDefinitions = [] } = useFieldDefinitions(boardId)
@@ -58,7 +58,7 @@ export function ProjectTasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   if (!projectId) return <Navigate to="/projects" replace />
-  if (projects.length > 0 && !project) return <Navigate to="/projects" replace />
+  if (!projectsLoading && !project) return <Navigate to="/projects" replace />
 
   function handleCreate(values: TaskFormValues) {
     createTask.mutate(values, {

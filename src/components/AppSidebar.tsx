@@ -122,7 +122,15 @@ export function AppSidebar({ open = false }: { open?: boolean }) {
             <DropdownMenuLabel>Boards</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {boards.map((board) => (
-              <DropdownMenuItem key={board.id} onClick={() => setSelectedBoardId(board.id)}>
+              <DropdownMenuItem
+                key={board.id}
+                onClick={() => {
+                  if (board.id !== selectedBoardId) {
+                    setSelectedBoardId(board.id)
+                    navigate('/dashboard')
+                  }
+                }}
+              >
                 {board.name}
               </DropdownMenuItem>
             ))}
@@ -146,10 +154,10 @@ export function AppSidebar({ open = false }: { open?: boolean }) {
         </div>
 
         <div>
-          <div className="mb-1 flex items-center justify-between px-2.5">
+          <div className="mb-1 flex items-center gap-1 px-1">
             <button
               onClick={() => setProjectsOpen((v) => !v)}
-              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+              className="flex flex-1 items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
             >
               {projectsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               Projects
